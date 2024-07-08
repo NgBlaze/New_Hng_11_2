@@ -72,7 +72,7 @@ class OrganisationController extends \Illuminate\Routing\Controller
 
         if ($validator->fails()) {
             return response()->json([
-                'status' => 'Bad request',
+                'status' => 'error',
                 'message' => 'Client error',
                 'statusCode' => 400,
                 'errors' => $validator->errors(),
@@ -99,7 +99,7 @@ class OrganisationController extends \Illuminate\Routing\Controller
 
         if ($validator->fails()) {
             return response()->json([
-                'status' => 'Bad request',
+                'status' => 'error',
                 'message' => 'Client error',
                 'statusCode' => 400,
                 'errors' => $validator->errors(),

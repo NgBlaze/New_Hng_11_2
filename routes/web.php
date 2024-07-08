@@ -6,6 +6,11 @@ use App\Http\Controllers\AuthController;
 
 use App\Http\Controllers\OrganisationController;
 
+
+Route::get('/', function () {
+    return response()->json(['message' => 'Welcome to the API']);
+});
+
 Route::post('auth/register', [AuthController::class, 'register']);
 Route::post('auth/login', [AuthController::class, 'login']);
 

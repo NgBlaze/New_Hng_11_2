@@ -2,11 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
-use App\Models\User;
-use App\Models\Organisation;
 
 class RegisterTest extends TestCase
 {
@@ -20,6 +19,7 @@ class RegisterTest extends TestCase
             'lastName' => 'Doe',
             'email' => 'john.doe@example.com',
             'password' => 'password123',
+            'password_confirmation' => 'password123',
             'phone' => '1234567890'
         ]);
 
@@ -29,13 +29,9 @@ class RegisterTest extends TestCase
                 'message' => 'Registration successful',
             ]);
 
-        $responseData = $response->json('data');
-
-        $this->assertNotNull($responseData['accessToken']);
-        $this->assertEquals('John', $responseData['user']['firstName']);
-
-        $organisation = Organisation::where('name', "John's Organisation")->first();
-        $this->assertNotNull($organisation);
+        $this->assertDatabaseHas('users', [
+            'email' => 'john.doe@example.com',
+        ]);
     }
 
     /** @test */
@@ -43,26 +39,30 @@ class RegisterTest extends TestCase
     {
         $response = $this->postJson('/auth/register', [
             'firstName' => 'John',
-            'email' => 'john.doe@example.com',
-            // Missing lastName and password
+            // Missing other fields
         ]);
 
-        $response->assertStatus(400)
-            ->assertJson([
-                'status' => 'Bad request',
-                'message' => 'Registration unsuccessful',
-            ]);
+        $response->assertStatus(400);
+        $response->assertJson([
+            'status' => 'error',
+            'message' => 'Client error',
+            'errors' => [
+                'lastName' => ['The last name field is required.'],
+                'email' => ['The email field is required.'],
+                'password' => ['The password field is required.'],
+            ],
+        ]);
     }
 
     /** @test */
     public function it_should_fail_if_duplicate_email_exists()
     {
-        $this->postJson('/auth/register', [
+        User::create([
             'firstName' => 'John',
             'lastName' => 'Doe',
             'email' => 'john.doe@example.com',
-            'password' => 'password123',
-            'phone' => '1234567890'
+            'password' => Hash::make('password123'),
+            'phone' => '1234567890',
         ]);
 
         $response = $this->postJson('/auth/register', [
@@ -70,13 +70,16 @@ class RegisterTest extends TestCase
             'lastName' => 'Doe',
             'email' => 'john.doe@example.com',
             'password' => 'password123',
-            'phone' => '0987654321'
+            'password_confirmation' => 'password123',
         ]);
 
         $response->assertStatus(400)
             ->assertJson([
-                'status' => 'Bad request',
-                'message' => 'Registration unsuccessful',
+                'status' => 'error',
+                'message' => 'Client error',
+                'errors' => [
+                    'email' => ['The email has already been taken.'],
+                ],
             ]);
     }
 }

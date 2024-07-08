@@ -2,12 +2,10 @@
 
 namespace Tests\Feature;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Artisan;
-use Tests\TestCase;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Tests\TestCase;
 
 class TokenGenerationTest extends TestCase
 {
@@ -16,49 +14,50 @@ class TokenGenerationTest extends TestCase
     /** @test */
     public function token_contains_correct_user_details()
     {
-        // Arrange
         $user = User::factory()->create([
-            'password' => Hash::make('password123')
+            'firstName' => 'Santiago',
+            'lastName' => 'Russel',
         ]);
 
-        // Act
         $response = $this->postJson('/auth/login', [
             'email' => $user->email,
-            'password' => 'password123'
+            'password' => 'password123',
         ]);
 
+        $response->assertStatus(200);
         $token = $response->json('data.accessToken');
 
-        // Decode the token
-        $decoded = JWTAuth::setToken($token)->getPayload()->toArray();
-
-        // Assert
-        $this->assertEquals($user->id, $decoded['sub']);
+        $decodedToken = JWTAuth::setToken($token)->getPayload();
+        $this->assertEquals('Santiago', $decodedToken->get('firstName'));
     }
 
     /** @test */
     public function token_expires_after_specified_duration()
     {
-        // Arrange
         $user = User::factory()->create([
-            'password' => Hash::make('password123')
+            'firstName' => 'Santiago',
+            'lastName' => 'Russel',
         ]);
 
         $response = $this->postJson('/auth/login', [
             'email' => $user->email,
-            'password' => 'password123'
+            'password' => 'password123',
         ]);
 
+        $response->assertStatus(200);
         $token = $response->json('data.accessToken');
 
-        // Wait for token to expire
-        sleep(3600); // Adjust based on token expiry time in seconds
+        // Wait for token expiration
+        sleep(3601); // Assuming token expires in 1 hour
 
-        // Act & Assert
-        $response = $this->get('/api/user', [
-            'Authorization' => "Bearer $token"
+        $response = $this->postJson('/auth/me', [], [
+            'Authorization' => "Bearer $token",
         ]);
 
         $response->assertStatus(401);
+        $response->assertJson([
+            'status' => 'error',
+            'message' => 'Token expired',
+        ]);
     }
 }
